@@ -1,0 +1,35 @@
+[
+  {
+    "inputs": [
+      { "internalType": "address", "name": "account", "type": "address" }
+    ],
+    "name": "isMember",
+    "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "becomeMember",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "account", "type": "address" }
+    ],
+    "name": "renewMembership",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+
+  {
+    "inputs": [{ "internalType": "address", "name": "", "type": "address" }],
+    "name": "membershipExpiresAt",
+    "outputs": [{ "internalType": "uint64", "name": "", "type": "uint64" }],
+    "stateMutability": "view",
+    "type": "function"
+  }
+]
