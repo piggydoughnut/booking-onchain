@@ -1,0 +1,64 @@
+Generic rules for serverless on-chain frontend projects
+
+- Serverless / On-chain
+  - Pure client-side SPA. No custom servers or backends.
+  - Host on IPFS/IPNS (or similar decentralized hosting).
+  - Interact only with blockchain RPC endpoints and decentralized storage gateways.
+  - No off-chain databases for application logic/state.
+
+- Package manager
+  - Use pnpm (packageManager pinned to a stable 8.x).
+
+- Frontend stack
+  - React SPA with Vite + TypeScript.
+  - UI: shadcn/ui + Tailwind CSS.
+  - Wallet: RainbowKit + wagmi (keep versions compatible with each other and React).
+  - Data fetching/state: @tanstack/react-query.
+  - Path alias: "@/*" → "src/*" (configure in tsconfig and Vite resolve.alias).
+
+- Directory conventions
+  - src/pages: top-level views.
+  - src/hooks: one file per contract or domain (read/write hooks only here).
+  - src/config: environment-driven config (constants, chains, contracts/addresses).
+  - src/abi: contract ABIs.
+  - src/components/ui: shadcn components.
+  - src/lib: shared utilities (e.g., formatting helpers).
+  - Use "@/..." imports (avoid deep relative paths).
+
+- Environment variables (frontend)
+  - Prefix with VITE_. Examples: VITE_RPC, VITE_WALLETCONNECT_PROJECT_ID, contract addresses.
+  - Do not bake secrets into the client.
+
+- Chain and payments
+  - Use the chain’s native currency for payments where applicable (payable functions).
+  - Never hardcode token symbols; derive from chain config and display dynamically.
+  - Centralize shared constants (e.g., CHAIN_ID, DEFAULT_TOKEN_DECIMALS, DEFAULT_PURCHASE_AMOUNT) in config.
+  - Format on-chain amounts with a utility that:
+    - uses formatUnits(decimals),
+    - rounds to a sensible precision (e.g., 6), and
+    - trims trailing zeros (avoid 0.30000000000000004).
+
+- Contract interaction (Solidity/EVM)
+  - Reads/writes live only in hooks under src/hooks.
+  - Reads use react-query; refetch on write success, account/chain changes, and as needed on new blocks.
+  - Never hardcode addresses in components; import from src/config/contracts.
+
+- Wallet behavior
+  - Provide a prominent Connect button (RainbowKit ConnectButton is acceptable).
+  - Injected connector enabled with shimDisconnect to allow manual disconnect.
+  - On manual disconnect: clear persisted connection state to prevent silent auto-reconnect; enforce on mount.
+  - Ensure explicit account selection; avoid auto-selecting accounts without user action.
+
+- UI/UX
+  - Keep components resilient: show pending/confirming/confirmed/failed states for tx flows.
+  - Render errors safely with String(error) for React compatibility.
+  - Dates in UTC; human-friendly format (e.g., "DD Month YYYY").
+
+- Build/dev
+  - Vite: set alias "@" → "src".
+  - tsconfig: baseUrl ".", paths { "@/*": ["src/*"] }.
+  - Provide pnpm scripts: dev, build, preview.
+
+- Content rules
+  - Token labels/symbols should reflect the connected chain; do not hardcode ETH or any specific symbol.
+  - Avoid chain-specific references in UI copy; rely on configuration.
