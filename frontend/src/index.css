@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Cormorant+Garamond:wght@300;400;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -6,6 +8,74 @@
   color-scheme: light;
 }
 
-body { @apply bg-background text-foreground; }
+body { 
+  @apply bg-background text-foreground font-serif;
+  background-image: 
+    radial-gradient(circle at 1px 1px, rgba(107, 44, 44, 0.05) 1px, transparent 0);
+  background-size: 20px 20px;
+}
+
+@layer base {
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display font-bold;
+  }
+  
+  h1 {
+    @apply text-4xl md:text-5xl tracking-tight;
+  }
+  
+  h2 {
+    @apply text-3xl md:text-4xl tracking-tight;
+  }
+  
+  h3 {
+    @apply text-2xl md:text-3xl tracking-tight;
+  }
+}
+
+@layer utilities {
+  .ornate-border {
+    @apply border-4 border-burgundy border-opacity-30;
+    border-image: repeating-linear-gradient(
+      45deg,
+      #6B2C2C,
+      #6B2C2C 10px,
+      #D4AF37 10px,
+      #D4AF37 20px
+    ) 4;
+  }
+  
+  .victorian-card {
+    @apply bg-cream border-2 border-burgundy shadow-victorian;
+    background: linear-gradient(135deg, #F5F0E8 0%, #E8DFD4 100%);
+    position: relative;
+  }
+  
+  .victorian-card::before {
+    content: '';
+    @apply absolute inset-0 border border-gold border-opacity-20 pointer-events-none;
+  }
+  
+  .ornate-divider {
+    @apply border-t-2 border-burgundy border-opacity-30 my-6;
+    position: relative;
+  }
+  
+  .ornate-divider::before,
+  .ornate-divider::after {
+    content: '◆';
+    @apply text-gold text-xs absolute top-0;
+    background: #F5F0E8;
+    padding: 0 8px;
+  }
+  
+  .ornate-divider::before {
+    left: 20%;
+  }
+  
+  .ornate-divider::after {
+    right: 20%;
+  }
+}
 
 

@@ -39,16 +39,11 @@ contract BookingManager is Ownable {
         emit AccessNftUpdated(nft);
     }
 
-    function book(uint256 listingId, uint64 startTs, uint64 endTs) external payable returns (uint256 bookingId) {
+    function book(uint256 listingId, uint64 startTs, uint64 endTs) external returns (uint256 bookingId) {
         require(membership.isMember(msg.sender), "not a member");
         require(startTs < endTs && endTs > uint64(block.timestamp), "bad interval");
         require(listings.isAvailable(listingId, startTs, endTs), "unavailable");
-        uint256 pricePerHour = listings.getListingPricePerHour(listingId);
-        // round up hours: hours = ceil((end - start) / 3600)
-        uint64 duration = endTs - startTs;
-        uint256 hoursCount = (uint256(duration) + 3600 - 1) / 3600;
-        uint256 amount = hoursCount * pricePerHour;
-        require(msg.value == amount, "wrong payment");
+        uint256 amount = 0;
 
         bookingId = nextBookingId++;
         bookings[bookingId] = Booking({

@@ -1,5 +1,6 @@
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
+import "@typechain/hardhat";
 import * as dotenv from "dotenv";
 
 dotenv.config();
@@ -10,6 +11,10 @@ const config: HardhatUserConfig = {
     settings: {
       optimizer: { enabled: true, runs: 200 },
     },
+  },
+  typechain: {
+    outDir: "frontend/src/abi/types",
+    target: "ethers-v6",
   },
   paths: {
     sources: "contracts",

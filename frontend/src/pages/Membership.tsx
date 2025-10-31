@@ -1,55 +1,23 @@
-import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useChainId, usePublicClient } from 'wagmi'
-import membershipAbi from '../abi/MembershipManager.json'
-import { CONTRACTS } from '../config/contracts'
-import { parseUnits } from 'viem'
-import { Button } from '../components/ui/button'
-import { Input } from '../components/ui/input'
-import { useEffect, useState } from 'react'
+import { useAccount, useChainId } from 'wagmi'
+import { Button } from '@/components/ui/button'
+import BurgundyBox from '@/components/ui/burgundy-box'
+import ErrorBox from '@/components/ui/error-box'
+import { useEffect } from 'react'
+import { useMembershipStatus, useMembershipExpiry, useBuyMembership } from '@/hooks/useMembership'
+import { CONTRACTS } from '@/config/contracts'
+import { CHAIN_ID, DEFAULT_MEMBERSHIP_AMOUNT, DEFAULT_TOKEN_DECIMALS } from '@/config/constants'
+import { formatUtcDateFromSeconds } from '@/lib/utils'
+
+
+const membershipAddress = (CONTRACTS.MEMBERSHIP || undefined) as `0x${string}` | undefined
 
 export default function Membership() {
     const { address } = useAccount()
     const chainId = useChainId()
-    const publicClient = usePublicClient()
-    const [hasCode, setHasCode] = useState<boolean | undefined>(undefined)
-
-    const formatExpiryDate = (value: bigint | number) => {
-        const ms = Number(value) * 1000
-        return new Date(ms).toLocaleDateString('en-GB', {
-            day: '2-digit',
-            month: 'long',
-            year: 'numeric',
-            timeZone: 'UTC'
-        })
-    }
-    const [amount, setAmount] = useState('1')
-    const membershipAddress = (CONTRACTS.MEMBERSHIP || undefined) as `0x${string}` | undefined
-    const { data: isMember, refetch, error, isPending: readPending } = useReadContract({
-        address: membershipAddress,
-        abi: membershipAbi as any,
-        functionName: 'isMember',
-        args: address ? [address] : undefined,
-        query: {
-            enabled: Boolean(address && membershipAddress),
-            refetchOnWindowFocus: true,
-            refetchOnReconnect: true,
-            refetchOnMount: 'always'
-        }
-    })
-
-    const { data: expiry, refetch: refetchExpiry } = useReadContract({
-        address: membershipAddress,
-        abi: membershipAbi as any,
-        functionName: 'membershipExpiresAt',
-        args: address ? [address] : undefined,
-        query: {
-            enabled: Boolean(address && membershipAddress),
-            refetchOnReconnect: true,
-            refetchOnMount: 'always'
-        }
-    })
-
-    const { writeContract, data: hash, isPending } = useWriteContract()
-    const { isLoading: waiting, isSuccess } = useWaitForTransactionReceipt({ hash })
+    const { data: isMember, refetch, error, isPending: readPending } = useMembershipStatus(address)
+    const { data: expiry, refetch: refetchExpiry } = useMembershipExpiry(address)
+    const hasExpiry = typeof expiry === 'bigint' || typeof expiry === 'number'
+    const { buyMembership, isPending, waiting, isSuccess } = useBuyMembership()
 
     useEffect(() => {
         if (isSuccess) {
@@ -66,64 +34,45 @@ export default function Membership() {
     }, [address, membershipAddress, chainId, refetch, refetchExpiry])
 
     useEffect(() => {
-        (async () => {
-            try {
-                if (membershipAddress && publicClient) {
-                    const code = await publicClient.getBytecode({ address: membershipAddress })
-                    setHasCode(Boolean(code && code.length > 2))
-                } else {
-                    setHasCode(undefined)
-                }
-            } catch {
-                setHasCode(undefined)
-            }
-        })()
-    }, [membershipAddress, publicClient])
-
-    useEffect(() => {
         refetch()
     }, [address, membershipAddress, refetch])
 
     const onBuy = () => {
-        if (!amount) return
-        writeContract({
-            address: CONTRACTS.MEMBERSHIP as `0x${string}`,
-            abi: membershipAbi as any,
-            functionName: 'becomeMember',
-            args: [],
-            value: parseUnits(amount, 18)
-        })
+        buyMembership(DEFAULT_MEMBERSHIP_AMOUNT, DEFAULT_TOKEN_DECIMALS)
     }
 
     return (
-        <div>
-            <h3 className="text-lg font-medium mb-2">Membership</h3>
-            {!address && (
-                <div className="mb-2 text-sm">Connect wallet to check membership.</div>
-            )}
-            {!membershipAddress && address && (
-                <div className="mb-2 text-sm text-red-600">Membership contract address is not set. Check frontend/.env.</div>
-            )}
-            {address && chainId !== 31337 && (
-                <div className="mb-2 text-sm text-red-600">Wrong network. Please switch your wallet to the local Hardhat chain (31337).</div>
-            )}
-            <div className="mb-2">Status: <span className={isMember ? 'text-green-600' : 'text-red-600'}>{
-                !address ? 'Connect wallet' : !membershipAddress ? 'Contract not set' : (chainId !== 31337 ? 'Wrong network' : readPending ? 'Loading…' : (typeof isMember === 'boolean' ? (isMember ? 'Active' : 'Not a member') : 'Loading…'))
-            }</span></div>
-            {error && <div className="text-sm text-red-600">{String(error.message || error)}</div>}
-            <div className="text-xs text-gray-500 space-y-1">
-                <div>Chain ID: {chainId}</div>
-                <div>Membership contract: {membershipAddress || 'not set'}</div>
-                {expiry !== undefined && (typeof expiry === 'bigint' || typeof expiry === 'number') && (
-                    <div>Expiry: {formatExpiryDate(expiry)}</div>
+        <div className="space-y-6">
+            <div className="ornate-divider"></div>
+            <h3 className="text-3xl text-burgundy mb-6">Membership</h3>
+            <div className="flex flex-row gap-4">
+                <BurgundyBox label="Status:">
+                    <p className={`text-lg font-semibold ${isMember ? 'text-secondary-dark' : 'text-burgundy-dark'}`}>
+                        {!address ? 'Connect wallet' : !membershipAddress ? 'Contract not set' : (chainId !== CHAIN_ID ? 'Wrong network' : readPending ? 'Loading…' : (typeof isMember === 'boolean' ? (isMember ? '✓ Active Member' : 'Not a member') : 'Loading…'))}
+                    </p>
+                </BurgundyBox>
+                {!!error && (
+                    <ErrorBox title="Error">
+                        {error instanceof Error ? error.message : String(error)}
+                    </ErrorBox>
                 )}
-                {hasCode !== undefined && <div>Code at address: {hasCode ? 'yes' : 'no'}</div>}
+                {(hasExpiry && Boolean(isMember)) && (
+                    <BurgundyBox label="Membership Expires:">
+                        <p className="text-lg font-semibold text-foreground">{formatUtcDateFromSeconds(expiry as number | bigint)}</p>
+                    </BurgundyBox>
+                )}
             </div>
-            <div className="flex gap-2 max-w-md">
-                <Input value={amount} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAmount(e.target.value)} placeholder="Payment amount" />
-                <Button onClick={onBuy} disabled={isPending || waiting}>Buy/Renew</Button>
+            <div className="pt-4">
+                <Button onClick={onBuy} disabled={isPending || waiting} size="lg" className="w-full md:w-auto">
+                    {isPending || waiting ? 'Processing...' : isMember ? 'Extend membership' : 'Buy membership'}
+                </Button>
             </div>
-            {(isPending || waiting) && <div className="mt-2 text-sm">Submitting...</div>}
+            {(isPending || waiting) && (
+                <div className="p-3 bg-gold/10 border border-gold rounded-sm">
+                    <p className="text-sm text-foreground/70 italic">Transaction in progress...</p>
+                </div>
+            )}
+            <div className="ornate-divider mt-8"></div>
         </div>
     )
 }

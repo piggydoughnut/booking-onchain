@@ -7,6 +7,7 @@ interface ImportMetaEnv {
   readonly VITE_BOOKING_ADDRESS: string;
   readonly VITE_ACCESS_NFT_ADDRESS: string;
   readonly VITE_ACCEPTED_TOKEN: string;
+  readonly VITE_WALLETCONNECT_PROJECT_ID?: string;
 }
 
 interface ImportMeta {

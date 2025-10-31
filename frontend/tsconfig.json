@@ -12,7 +12,11 @@
     "jsx": "react-jsx",
     "strict": true,
     "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    }
   },
   "include": ["src", "vite.config.ts", "tailwind.config.ts", "postcss.config.js"],
   "references": [{ "path": "./tsconfig.node.json" }]
