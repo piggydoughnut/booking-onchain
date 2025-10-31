@@ -1,17 +1,15 @@
-# booking-onchain
+# Booking Onchain – Memberships, Listings, and Bookings
 
 POC for a decentralized room/table booking system
 
-# Booking Onchain – Memberships, Listings, and Bookings (Solidity)
-
 This repository contains Solidity smart contracts and a Hardhat project that implement:
 
-- MembershipManager: Users pay with an ERC-20-compatible Asset Hub asset (e.g., DOT on AssetHub Paseo) to become members for a period.
-- ListingManager: Create coworking listings (desks, rooms) with price per hour, token, and IPFS CID metadata.
-- BookingManager: Members can book available listings; funds are escrowed and released to the listing owner after checkout.
+- MembershipManager: Users pay the chain native currency to become members for a period.
+- ListingManager: Create coworking listings (desks, rooms) with IPFS CID metadata and availability tracking.
+- BookingManager: Members can book available listings. Bookings are currently free (no payment collected).
 - AccessNFT (optional): Non-transferable NFT granting temporary access aligned to booking expiry.
 
-Payments use the chain native currency via payable functions (no ERC-20).
+Payments use the chain native currency (no ERC-20). Booking is nonpayable (free) in the current setup.
 
 ## Quickstart
 
@@ -42,21 +40,21 @@ This will:
 pnpm run node
 ```
 
-3. Manual flow (alternative)
+### Manual flow (alternative)
 
-3.1 Compile
+1. Compile
 
 ```bash
 pnpm run compile
 ```
 
-3.2 Deploy to local Hardhat (localhost network)
+2 Deploy to local Hardhat (localhost network)
 
 ```bash
 pnpm run deploy  # deploys to localhost (http://127.0.0.1:8545)
 ```
 
-3.3 Frontend env
+3 Frontend env
 
 The deploy script writes `frontend/.env` automatically with values like:
 
@@ -66,22 +64,21 @@ VITE_MEMBERSHIP_ADDRESS=0x...
 VITE_LISTING_ADDRESS=0x...
 VITE_BOOKING_ADDRESS=0x...
 VITE_ACCESS_NFT_ADDRESS=0x...
-VITE_ACCEPTED_TOKEN=
 ```
 
 If you prefer, you can edit these manually.
 
 ## Design Overview
 
-- Memberships: `becomeMember(paymentAmount)` and `renewMembership(account, paymentAmount)` pull tokens via `transferFrom` and extend `membershipExpiresAt`. Periods are `paymentAmount / pricePerPeriod` and duration is `periods * durationPerPeriod`.
-- Listings: `createListing(token, pricePerHour, cid)` sets accepted token, price, and IPFS CID. `isAvailable()` checks for overlaps against stored booked intervals. Only the `BookingManager` can `blockInterval`.
-- Bookings: `book(listingId, startTs, endTs)` validates membership, checks availability, pulls funds into escrow, stores booking, blocks interval, and optionally mints an `AccessNFT` keyed by bookingId with expiry = `endTs`. `release()` sends escrowed funds to the listing owner; `refund()` returns to the renter.
+- Memberships: Users acquire membership by paying the chain native currency; membership expiry is tracked on-chain.
+- Listings: `createListing(cid, priceOrFree)` stores owner, metadata CID, and active flag. `isAvailable()` checks for overlaps against stored booked intervals. Only `BookingManager` can `blockInterval`.
+- Bookings: `book(listingId, startTs, endTs)` validates membership, checks availability, stores booking with `amount=0` (free), blocks interval, and optionally mints an `AccessNFT` keyed by bookingId with expiry = `endTs`. `release()` / `refund()` operate on `amount` (0 in current setup).
 
 ## Notes
 
-- Time resolution is seconds; billing rounds up per hour: `ceil((end - start)/3600) * pricePerHour`.
+- Time resolution is seconds. Pricing is currently disabled for booking (free). If re-enabled, prefer deriving price fully on-chain.
 - AccessNFT is non-transferable to model temporary access keys; ownership can be burned by holder or contract owner.
-- Membership `becomeMember`/`renewMembership` are payable. `book` is payable and requires exact amount per hours.
+- Membership `becomeMember`/`renewMembership` are payable. `book` is nonpayable in this repo’s current state.
 
 ### References
 
@@ -91,6 +88,15 @@ If you prefer, you can edit these manually.
 ## Frontend (Pure Client-Side, IPFS/IPNS)
 
 The UI is a static Vite + React SPA under `frontend/` — no servers required.
+
+Stack and conventions:
+
+- React + Vite + TypeScript
+- UI: shadcn/ui + Tailwind CSS
+- Wallet: RainbowKit + wagmi
+- Data: @tanstack/react-query
+- Path alias: `@/*` → `src/*`
+- Reads/writes live only in hooks in `src/hooks/`; components do not hardcode addresses and import from `src/config/contracts`.
 
 Setup:
 
@@ -107,7 +113,6 @@ VITE_MEMBERSHIP_ADDRESS=0x...
 VITE_LISTING_ADDRESS=0x...
 VITE_BOOKING_ADDRESS=0x...
 VITE_ACCESS_NFT_ADDRESS=0x...
-VITE_ACCEPTED_TOKEN=
 ```
 
 Build:
