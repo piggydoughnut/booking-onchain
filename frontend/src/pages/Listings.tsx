@@ -1,12 +1,10 @@
 import { useState, useEffect } from 'react'
-import { useAccount, usePublicClient } from 'wagmi'
+import { useAccount } from 'wagmi'
 import { Button } from '@/components/ui/button'
-import { useListings, useListingAvailability } from '@/hooks/useListing'
+import { useListings, useListingAvailability, useEnsureListingAvailability } from '@/hooks/useListing'
+import { todayIsoUTC, getUtcDayRange } from '@/lib/utils'
 import { useMembershipStatus } from '@/hooks/useMembership'
 import { useBookListing } from '@/hooks/useBooking'
-import { CONTRACTS } from '@/config/contracts'
-import listingAbi from '@/abi/ListingManager.json'
-import type { Abi } from 'viem'
 
 import BurgundyBox from '@/components/ui/burgundy-box'
 
@@ -37,11 +35,11 @@ export default function Listings() {
 
 function ListingCard({ listing, canBook }: { listing: { id: bigint, owner: string, pricePerHour: bigint, cid: string }, canBook: boolean }) {
     const [selectedDate, setSelectedDate] = useState<string>(todayIsoUTC())
-    const publicClient = usePublicClient()
     const [availabilityError, setAvailabilityError] = useState<string | null>(null)
 
     const { startSec, endSec } = selectedDate ? getUtcDayRange(selectedDate) : { startSec: undefined, endSec: undefined }
     const { data: isAvailable } = useListingAvailability(listing.id, startSec, endSec)
+    const { ensureAvailable } = useEnsureListingAvailability(listing.id)
     const { bookListing, hash, isPending, waiting, isSuccess, isError, error } = useBookListing()
 
     const onBook = async () => {
@@ -50,19 +48,12 @@ function ListingCard({ listing, canBook }: { listing: { id: bigint, owner: strin
             return
         }
         try {
-            // Check availability one more time before booking
-            if (publicClient && CONTRACTS.LISTING) {
-                const isAvail = await publicClient.readContract({
-                    address: CONTRACTS.LISTING as `0x${string}`,
-                    abi: listingAbi as Abi,
-                    functionName: 'isAvailable',
-                    args: [listing.id, BigInt(startSec), BigInt(endSec)]
-                }) as boolean
-                if (!isAvail) {
-                    setAvailabilityError('This listing is no longer available. Please select another date.')
-                    return
-                }
+
+            const isAvail = await ensureAvailable(BigInt(startSec), BigInt(endSec))
+            if (!isAvail) {
+                throw new Error('Listing is no longer available. Please select another date.')
             }
+
 
             console.log('Booking with:', { listingId: listing.id, startSec: startSec.toString(), endSec: endSec.toString() })
             setAvailabilityError(null)
@@ -73,7 +64,6 @@ function ListingCard({ listing, canBook }: { listing: { id: bigint, owner: strin
         }
     }
 
-    // Check availability when date or availability status changes
     useEffect(() => {
         if (selectedDate && isAvailable === false) {
             setAvailabilityError('This listing is already booked for the selected date.')
@@ -158,17 +148,6 @@ function ListingCard({ listing, canBook }: { listing: { id: bigint, owner: strin
     )
 }
 
-function todayIsoUTC(): string {
-    const now = new Date()
-    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
-    return d.toISOString().slice(0, 10)
-}
 
-function getUtcDayRange(isoDate: string): { startSec: bigint, endSec: bigint } {
-    const [y, m, d] = isoDate.split('-').map(Number)
-    const startMs = Date.UTC(y, (m - 1), d, 0, 0, 0)
-    const endMs = startMs + 24 * 60 * 60 * 1000
-    return { startSec: BigInt(Math.floor(startMs / 1000)), endSec: BigInt(Math.floor(endMs / 1000)) }
-}
 
 

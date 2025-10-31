@@ -61,6 +61,39 @@ export function useListingAvailability(
 }
 
 /**
+ * Imperative availability checker to verify right before booking.
+ */
+export function useEnsureListingAvailability(listingId: bigint | undefined) {
+  const publicClient = usePublicClient();
+  const chainId = useChainId();
+  const listingAddress = (CONTRACTS.LISTING || undefined) as
+    | `0x${string}`
+    | undefined;
+
+  const ensureAvailable = async (
+    startTs: bigint,
+    endTs: bigint
+  ): Promise<boolean> => {
+    if (
+      !publicClient ||
+      !listingAddress ||
+      chainId !== CHAIN_ID ||
+      listingId === undefined
+    ) {
+      return false;
+    }
+    return (await publicClient.readContract({
+      address: listingAddress,
+      abi: listingAbi as Abi,
+      functionName: "isAvailable",
+      args: [listingId, startTs, endTs],
+    })) as boolean;
+  };
+
+  return { ensureAvailable };
+}
+
+/**
  * Fetch all active listings
  */
 export function useListings(): UseListingsResult {

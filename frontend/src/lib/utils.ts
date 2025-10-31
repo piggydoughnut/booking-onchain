@@ -45,3 +45,30 @@ export function formatUtcTimeRangeFromSeconds(
   const end = new Date(Number(endSeconds) * 1000).toISOString().slice(11, 16);
   return `${start}–${end} UTC`;
 }
+/**
+ * Returns today's date in UTC as YYYY-MM-DD.
+ */
+export function todayIsoUTC(): string {
+  const now = new Date();
+  const d = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  );
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Given an ISO date (YYYY-MM-DD), returns the UTC start and end timestamps (in seconds)
+ * for that full day range [00:00, 24:00).
+ */
+export function getUtcDayRange(isoDate: string): {
+  startSec: bigint;
+  endSec: bigint;
+} {
+  const [y, m, d] = isoDate.split("-").map(Number);
+  const startMs = Date.UTC(y, m - 1, d, 0, 0, 0);
+  const endMs = startMs + 24 * 60 * 60 * 1000;
+  return {
+    startSec: BigInt(Math.floor(startMs / 1000)),
+    endSec: BigInt(Math.floor(endMs / 1000)),
+  };
+}
